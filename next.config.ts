@@ -18,6 +18,16 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "positive-clarity-production-6512.up.railway.app",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
         hostname: "**",
         pathname: "/uploads/**",
       },
