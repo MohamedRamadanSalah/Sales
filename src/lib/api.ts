@@ -263,8 +263,10 @@ export const locationsApi = {
 
 // Orders
 export const ordersApi = {
-  create: (data: { property_id: number; notes?: string }) =>
-    apiFetch<ApiResponse<Order>>('/api/orders', { method: 'POST', body: data }),
+  create: (data: { property_id: number; notes?: string; national_id?: string; address?: string; payment_method?: string }) =>
+    apiFetch<ApiResponse<Order & { invoice_id?: number }>>('/api/orders', { method: 'POST', body: data }),
+  previewInvoice: (propertyId: number | string) =>
+    apiFetch<ApiResponse<DetailedInvoice>>(`/api/orders/preview/${propertyId}`),
   my: (params?: { page?: number; limit?: number }) => {
     const q = params
       ? new URLSearchParams(

@@ -19,9 +19,6 @@ export default function PropertyDetailPage() {
   const id = Number(params.id);
   const { lang, isLoggedIn } = useAuth();
   const toast = useToast();
-  const [orderModalOpen, setOrderModalOpen] = useState(false);
-  const [orderNotes, setOrderNotes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
 
   const { data, error } = useSWR(
@@ -32,27 +29,6 @@ export default function PropertyDetailPage() {
   const property = data?.data as Property | undefined;
 
   const t = (ar: string, en: string) => (lang === 'ar' ? ar : en);
-
-  const handleOrderSubmit = async () => {
-    if (!property || !isLoggedIn) return;
-    setIsSubmitting(true);
-    try {
-      await ordersApi.create({ property_id: property.id, notes: orderNotes });
-      setOrderModalOpen(false);
-      toast.success(
-        t('تم إرسال طلبك بنجاح! 🎉', 'Your request has been submitted! 🎉'),
-        t('سيتم التواصل معك قريباً من قبل فريقنا', 'Our team will contact you soon')
-      );
-      router.push('/orders');
-    } catch (err) {
-      toast.error(
-        t('خطأ في إرسال الطلب', 'Error submitting request'),
-        (err as Error).message
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleFavoriteToggle = async () => {
     if (!isLoggedIn) {
@@ -230,8 +206,8 @@ export default function PropertyDetailPage() {
                 variant="accent"
                 onClick={() =>
                   isLoggedIn
-                    ? setOrderModalOpen(true)
-                    : router.push(`/login?returnUrl=${encodeURIComponent(`/property/${id}`)}`)
+                    ? router.push(`/checkout/${id}`)
+                    : router.push(`/login?returnUrl=${encodeURIComponent(`/checkout/${id}`)}`)
                 }
               >
                 🏷️ {t('طلب شراء', 'Request Purchase')}
@@ -259,42 +235,6 @@ export default function PropertyDetailPage() {
         </aside>
       </div>
 
-      {/* Order Modal */}
-      <Modal
-        isOpen={orderModalOpen}
-        onClose={() => setOrderModalOpen(false)}
-        title={t('طلب شراء', 'Request Purchase')}
-      >
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-sm">
-            <p className="font-semibold">{t('كيف يعمل هذا؟', 'How does this work?')}</p>
-            <p className="mt-1 text-xs">
-              {t(
-                'سيتم إرسال طلبك لفريق المبيعات. سيتواصلون معك خلال 24 ساعة لمناقشة التفاصيل.',
-                'Your request will be sent to the sales team. They will contact you within 24 hours to discuss details.'
-              )}
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-2">{t('ملاحظات (اختياري)', 'Notes (optional)')}</label>
-            <textarea
-              value={orderNotes}
-              onChange={(e) => setOrderNotes(e.target.value)}
-              placeholder={t('مثل: أريد زيارة العقار يوم السبت', 'e.g., I want to visit the property on Saturday')}
-              rows={4}
-              className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] transition-all"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setOrderModalOpen(false)} className="flex-1">
-              {t('إلغاء', 'Cancel')}
-            </Button>
-            <Button variant="accent" onClick={handleOrderSubmit} isLoading={isSubmitting} className="flex-1">
-              {t('تأكيد الطلب ✓', 'Confirm Request ✓')}
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }
