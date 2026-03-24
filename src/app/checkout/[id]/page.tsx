@@ -23,7 +23,7 @@ export default function CheckoutPage() {
 
   const [nationalId, setNationalId] = useState('');
   const [address, setAddress] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'INSTALLMENT' | 'MORTGAGE'>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer' | 'credit_card' | 'instapay' | 'vodafone_cash'>('cash');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -99,9 +99,18 @@ export default function CheckoutPage() {
       // Navigate to the full detailed invoice view after placing the order
       router.push(`/invoices/${result.data.id}`);
     } catch (err) {
+      let errorMessage = (err as Error).message;
+      
+      // Make common validation errors user-friendly
+      if (errorMessage.includes('payment_method')) {
+        errorMessage = t('طريقة الدفع المحددة غير صالحة.', 'The selected payment method is invalid.');
+      } else if (errorMessage.includes('national_id')) {
+        errorMessage = t('تنسيق رقم الهوية غير صحيح.', 'Invalid National ID format.');
+      }
+
       toast.error(
-        t('فشل تقديم الطلب', 'Failed to submit request'),
-        (err as Error).message
+        t('عذراً، لم نتمكن من إرسال طلبك', 'Sorry, we could not submit your request'),
+        errorMessage
       );
     } finally {
       setIsSubmitting(false);
@@ -171,11 +180,13 @@ export default function CheckoutPage() {
             <label className="block text-sm font-semibold text-[var(--color-text)] mb-2">
               {t('طريقة الدفع المقترحة *', 'Proposed Payment Method *')}
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
-                { id: 'CASH', icon: '💵', labelAr: 'كاش', labelEn: 'Cash' },
-                { id: 'INSTALLMENT', icon: '🗓️', labelAr: 'تقسيط', labelEn: 'Installment' },
-                { id: 'MORTGAGE', icon: '🏦', labelAr: 'تمويل عقاري', labelEn: 'Mortgage' },
+                { id: 'cash', icon: '💵', labelAr: 'كاش', labelEn: 'Cash' },
+                { id: 'bank_transfer', icon: '🏦', labelAr: 'تحويل بنكي', labelEn: 'Bank Transfer' },
+                { id: 'credit_card', icon: '💳', labelAr: 'بطاقة ائتمان', labelEn: 'Credit Card' },
+                { id: 'instapay', icon: '📱', labelAr: 'إنستاباي', labelEn: 'InstaPay' },
+                { id: 'vodafone_cash', icon: '🔴', labelAr: 'فودافون كاش', labelEn: 'Vodafone Cash' },
               ].map((method) => (
                 <label
                   key={method.id}
