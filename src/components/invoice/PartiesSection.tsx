@@ -189,19 +189,19 @@ export function PartiesSection({ data, lang, isLoading }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <PersonCard
             title={t('المشتري', 'Buyer')}
-            name={data.buyer.full_name}
+            name={data.buyer.full_name || (data.buyer as any).name}
             nationalId={data.buyer.national_id}
-            email={data.buyer.contact_email}
-            phone={data.buyer.contact_phone}
+            email={data.buyer.contact_email || (data.buyer as any).email}
+            phone={data.buyer.contact_phone || (data.buyer as any).phone}
             address={data.buyer.address}
             lang={lang}
           />
           <PersonCard
             title={t('البائع', 'Seller')}
-            name={data.seller.full_name}
+            name={data.seller.full_name || (data.seller as any).name}
             nationalId={data.seller.national_id}
-            email={data.seller.contact_email}
-            phone={data.seller.contact_phone}
+            email={data.seller.contact_email || (data.seller as any).email}
+            phone={data.seller.contact_phone || (data.seller as any).phone}
             address={data.seller.address}
             lang={lang}
           />
