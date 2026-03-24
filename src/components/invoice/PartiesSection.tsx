@@ -82,7 +82,7 @@ function PersonCard({
 
 function AgentCard({ data, lang }: { data: Parties['agent']; lang: 'ar' | 'en' }) {
   const t = (ar: string, en: string) => (lang === 'ar' ? ar : en);
-  if (!data.name) {
+  if (!data || !data.name) {
     return (
       <div className="glass rounded-xl p-5 opacity-60">
         <h3 className="text-sm font-bold text-[var(--color-accent-dark)] uppercase tracking-wider mb-3">
@@ -130,6 +130,7 @@ function AgentCard({ data, lang }: { data: Parties['agent']; lang: 'ar' | 'en' }
 
 function AdminCard({ data, lang }: { data: Parties['platform_admin']; lang: 'ar' | 'en' }) {
   const t = (ar: string, en: string) => (lang === 'ar' ? ar : en);
+  if (!data) return null;
   return (
     <div className="glass rounded-xl p-5">
       <h3 className="text-sm font-bold text-[var(--color-accent-dark)] uppercase tracking-wider mb-3">
