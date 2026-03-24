@@ -22,6 +22,7 @@ import type {
   ApiResponse,
   PaginatedResponse,
 } from '@/types';
+import type { DetailedInvoice } from '@/types/invoice';
 
 // In local dev, NEXT_PUBLIC_API_URL=http://localhost:5000 (set in .env.local)
 // On Vercel (same domain deployment), leave unset → defaults to '' (same origin)
@@ -290,6 +291,22 @@ export const ordersApi = {
     apiFetch<ApiResponse<Invoice>>(`/api/orders/invoices/${id}/status`, {
       method: 'PATCH',
       body: { status },
+    }),
+};
+
+// Detailed Invoice (full 10-section invoice view)
+export const invoiceDetailApi = {
+  getDetailedInvoice: (id: string) =>
+    apiFetch<ApiResponse<DetailedInvoice>>(`/api/orders/invoices/${id}/detail`),
+  sellerApproval: (id: string, body: { status: 'APPROVED' | 'REJECTED'; reason?: string }) =>
+    apiFetch<ApiResponse<DetailedInvoice>>(`/api/orders/invoices/${id}/seller-approval`, {
+      method: 'PATCH',
+      body,
+    }),
+  adminApproval: (id: string, body: { status: 'APPROVED' | 'REJECTED' | 'BLOCKED_PENDING_REVIEW'; notes?: string; reason?: string }) =>
+    apiFetch<ApiResponse<DetailedInvoice>>(`/api/orders/invoices/${id}/admin-approval`, {
+      method: 'PATCH',
+      body,
     }),
 };
 

@@ -101,10 +101,15 @@ function OrdersContent() {
                 <td className="py-3 px-2 text-[var(--color-text-secondary)]">
                   {formatDate(o.created_at, lang)}
                 </td>
-                <td className="py-3 px-2">
+                <td className="py-3 px-2 flex gap-2">
                   <Link href={`/property/${o.property_id}`}>
                     <Button variant="ghost" size="sm">
                       {lang === 'ar' ? 'عرض' : 'View'}
+                    </Button>
+                  </Link>
+                  <Link href={`/invoices/${o.id}`}>
+                    <Button variant="outline" size="sm">
+                      {lang === 'ar' ? 'الفاتورة' : 'Invoice'}
                     </Button>
                   </Link>
                 </td>

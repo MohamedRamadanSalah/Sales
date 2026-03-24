@@ -1,0 +1,104 @@
+/* Invoice Print Stylesheet — imported only on the invoice detail page */
+
+@media print {
+  /* === Hide non-printable elements === */
+  nav,
+  footer,
+  aside,
+  .invoice-no-print,
+  .invoice-print-btn,
+  .invoice-download-btn,
+  .invoice-approval-actions,
+  .invoice-approval-textarea,
+  .invoice-missing-banner,
+  .invoice-countdown,
+  .skeleton,
+  [data-skeleton],
+  button {
+    display: none !important;
+  }
+
+  /* === Force clean print layout === */
+  html, body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .glass {
+    background: white !important;
+    border: 1px solid #ddd !important;
+  }
+
+  /* === Page breaks: each section on new page except InvoiceHeader === */
+  .invoice-section {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .invoice-section:first-child,
+  .invoice-section-header {
+    page-break-before: auto;
+    break-before: auto;
+  }
+
+  /* === Financial table: full visibility === */
+  .invoice-financial-table {
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  .invoice-financial-table table {
+    width: 100% !important;
+  }
+
+  /* === National ID: show unmasked in print === */
+  .screen-only {
+    display: none !important;
+  }
+
+  .print-only {
+    display: inline !important;
+  }
+
+  /* === Remove animations === */
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-scale-in,
+  .animate-slide-left,
+  .animate-slide-right,
+  .animate-float,
+  .animate-pulse-gold {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* === Main container full width === */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .invoice-page-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+}
+
+/* Screen-only: hide print-only spans on screen */
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
