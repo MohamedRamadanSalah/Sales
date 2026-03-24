@@ -26,6 +26,8 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer' | 'credit_card' | 'instapay' | 'vodafone_cash'>('cash');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [createdInvoiceId, setCreatedInvoiceId] = useState<number | null>(null);
 
   const t = (ar: string, en: string) => (lang === 'ar' ? ar : en);
 
@@ -94,10 +96,10 @@ export default function CheckoutPage() {
         t('جاري نقلك لصفحة الفاتورة...', 'Redirecting to your invoice...')
       );
 
-      // result.data.invoice_id is added in the updated createOrder controller
+      // Show the beautiful success screen instead of forcefully redirecting
       const invoiceId = result.data.invoice_id || result.data.id;
-      // Navigate to the full detailed invoice view after placing the order
-      router.push(`/invoices/${result.data.id}`);
+      setCreatedInvoiceId(invoiceId);
+      setIsSuccess(true);
     } catch (err) {
       let errorMessage = (err as Error).message;
       
@@ -116,6 +118,62 @@ export default function CheckoutPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (isSuccess && createdInvoiceId) {
+    return (
+      <div className="min-h-screen bg-[var(--color-bg)] py-12 px-4 sm:px-6 flex items-center justify-center">
+        <div className="max-w-2xl w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-8 md:p-12 text-center shadow-2xl animate-fade-in-up">
+          <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <span className="text-5xl">✨</span>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-emerald-600 mb-4">
+            {t('تم إرسال طلب الشراء بنجاح!', 'Purchase Request Submitted!')}
+          </h1>
+          <p className="text-lg text-[var(--color-text-secondary)] mb-8 max-w-lg mx-auto leading-relaxed">
+            {t(
+              'لقد قمنا بإنشاء فاتورة مبدئية لطلبك وتم إرسالها إلى البائع للمراجعة والموافقة.',
+              'A draft invoice has been generated for your request and sent to the seller for review and approval.'
+            )}
+          </p>
+
+          <div className="bg-[var(--color-bg-2)] rounded-2xl p-6 mb-10 text-start border border-[var(--color-border)]">
+            <h3 className="font-bold text-[var(--color-text)] mb-4">
+              {t('الخطوات القادمة:', 'Next Steps:')}
+            </h3>
+            <ul className="space-y-3 text-[var(--color-text-muted)] text-sm md:text-base">
+              <li className="flex items-center gap-3">
+                <span className="text-emerald-500">1.</span>
+                {t('البائع سيقوم بمراجعة الطلب (عادة خلال 24 ساعة).', 'Seller will review the request (usually within 24 hours).')}
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="text-emerald-500">2.</span>
+                {t('سيتم مراجعة الفاتورة من قبل الإدارة للتدقيق القانوني والمالي.', 'Management will audit the invoice for legal and financial compliance.')}
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="text-emerald-500">3.</span>
+                {t('سنقوم بإشعارك عند الموافقة النهائية للبدء في إجراءات الدفع والتوقيع.', 'You will be notified upon final approval to proceed with payment and signing.')}
+              </li>
+            </ul>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => router.push(`/invoices/${createdInvoiceId}`)}
+              className="px-8 py-4 bg-[var(--color-primary)] text-white font-bold rounded-xl hover:opacity-90 transition-opacity flex-1"
+            >
+              {t('عرض الفاتورة للمتابعة', 'View Invoice Status')}
+            </button>
+            <button
+              onClick={() => router.push('/properties')}
+              className="px-8 py-4 bg-transparent border-2 border-[var(--color-border)] text-[var(--color-text)] font-semibold rounded-xl hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-all flex-1"
+            >
+              {t('العودة للعقارات', 'Back to Properties')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] py-12 px-4 sm:px-6">
