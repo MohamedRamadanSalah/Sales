@@ -117,6 +117,9 @@ export interface Order {
   notes?: string | null;
   created_at: string;
   updated_at: string;
+  is_seller?: boolean;
+  buyer_first_name?: string;
+  buyer_last_name?: string;
   property?: Property;
   client?: User;
 }

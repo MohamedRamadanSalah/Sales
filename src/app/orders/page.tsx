@@ -36,7 +36,7 @@ function OrdersContent() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <p className="text-xl text-[var(--color-text-muted)] mb-6">
-          {lang === 'ar' ? 'لا توجد طلبات شراء بعد' : 'No purchase requests yet'}
+          {lang === 'ar' ? 'لا توجد معاملات بعد' : 'No transactions yet'}
         </p>
         <Link href="/search">
           <Button variant="accent">{lang === 'ar' ? 'تصفح العقارات' : 'Browse Properties'}</Button>
@@ -57,7 +57,7 @@ function OrdersContent() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-[var(--color-text)] mb-6">
-        {lang === 'ar' ? 'طلباتي' : 'My Orders'}
+        {lang === 'ar' ? 'المعاملات والطلبات' : 'My Transactions'}
       </h1>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
@@ -65,6 +65,12 @@ function OrdersContent() {
             <tr className="border-b border-[var(--color-border)]">
               <th className="text-start py-3 px-2 font-semibold text-[var(--color-text)]">
                 {lang === 'ar' ? 'العقار' : 'Property'}
+              </th>
+              <th className="text-start py-3 px-2 font-semibold text-[var(--color-text)]">
+                {lang === 'ar' ? 'نوع المعاملة' : 'Type'}
+              </th>
+              <th className="text-start py-3 px-2 font-semibold text-[var(--color-text)]">
+                {lang === 'ar' ? 'الطرف الآخر' : 'Other Party'}
               </th>
               <th className="text-start py-3 px-2 font-semibold text-[var(--color-text)]">
                 {lang === 'ar' ? 'المبلغ' : 'Amount'}
@@ -91,6 +97,25 @@ function OrdersContent() {
                     {(o as Order & { property_title?: string }).property_title ??
                       (o.property ? getPropertyTitle(o.property, lang) : `#${o.property_id}`)}
                   </Link>
+                </td>
+                <td className="py-3 px-2">
+                  <Badge variant="default" className={o.is_seller ? 'bg-amber-100 text-amber-800' : 'bg-blue-50 text-blue-700'}>
+                    {lang === 'ar' 
+                      ? (o.is_seller ? 'طلب بيع' : 'طلب شراء')
+                      : (o.is_seller ? 'Sale Request' : 'Purchase Request')}
+                  </Badge>
+                </td>
+                <td className="py-3 px-2">
+                  {o.is_seller 
+                    ? <span className="text-[var(--color-text)]">
+                        {o.buyer_first_name} {o.buyer_last_name}
+                        <span className="block text-xs text-[var(--color-text-muted)]">{lang === 'ar' ? 'مشتري الممتلكات' : 'Buyer'}</span>
+                      </span>
+                    : <span className="text-[var(--color-text)]">
+                        {lang === 'ar' ? 'مالك العقار' : 'Property Owner'}
+                        <span className="block text-xs text-[var(--color-text-muted)]">{lang === 'ar' ? 'بائع العقار' : 'Seller'}</span>
+                      </span>
+                  }
                 </td>
                 <td className="py-3 px-2 font-medium">
                   {formatPrice(o.total_amount, lang)}
