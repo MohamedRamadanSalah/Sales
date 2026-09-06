@@ -22,7 +22,7 @@ import type {
   ApiResponse,
   PaginatedResponse,
 } from '@/types';
-import type { DetailedInvoice } from '@/types/invoice';
+import type { DetailedInvoice, InvoiceMeta } from '@/types/invoice';
 
 // In local dev, NEXT_PUBLIC_API_URL=http://localhost:5000 (set in .env.local)
 // On Vercel (same domain deployment), leave unset → defaults to '' (same origin)
@@ -283,6 +283,8 @@ export const ordersApi = {
   },
   updateStatus: (id: number, status: string) =>
     apiFetch<ApiResponse<Order>>(`/api/orders/${id}/status`, { method: 'PATCH', body: { status } }),
+  cancel: (id: number) =>
+    apiFetch<ApiResponse<unknown>>(`/api/orders/${id}/cancel`, { method: 'PATCH' }),
   createInvoice: (data: { order_id: number; amount: number; due_date: string; payment_method?: string }) =>
     apiFetch<ApiResponse<Invoice>>('/api/orders/invoices', { method: 'POST', body: data }),
   getInvoices: (params?: Record<string, string | number>) => {
@@ -297,9 +299,14 @@ export const ordersApi = {
 };
 
 // Detailed Invoice (full 10-section invoice view)
+export interface DetailedInvoiceResponse {
+  data: DetailedInvoice;
+  meta: InvoiceMeta;
+}
+
 export const invoiceDetailApi = {
   getDetailedInvoice: (id: string) =>
-    apiFetch<ApiResponse<DetailedInvoice>>(`/api/orders/invoices/${id}/detail`),
+    apiFetch<DetailedInvoiceResponse & { success: boolean }>(`/api/orders/invoices/${id}/detail`),
   sellerApproval: (id: string, body: { status: 'APPROVED' | 'REJECTED'; reason?: string }) =>
     apiFetch<ApiResponse<DetailedInvoice>>(`/api/orders/invoices/${id}/seller-approval`, {
       method: 'PATCH',

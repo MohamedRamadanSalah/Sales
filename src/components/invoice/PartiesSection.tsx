@@ -8,12 +8,18 @@ interface Props {
   isLoading?: boolean;
 }
 
+/** Masks a national ID for on-screen display; full value shown only for print. */
 function maskNationalId(id: string | null): string {
   if (!id) return '—';
   if (id.length <= 4) return id;
   return id.slice(0, 3) + '****' + id.slice(-3);
 }
 
+/**
+ * Renders a single party card.
+ * Fields that were redacted by the backend will be null — the component
+ * gracefully omits them rather than showing empty strings.
+ */
 function PersonCard({
   title,
   name,
@@ -40,9 +46,7 @@ function PersonCard({
         {title}
       </h3>
       {isMissing ? (
-        <p className="text-sm text-amber-600 italic">
-          {t('بيانات غير متوفرة', 'Data not provided')}
-        </p>
+        <p className="text-sm text-amber-600 italic">{t('بيانات غير متوفرة', 'Data not provided')}</p>
       ) : (
         <div className="space-y-2 text-sm">
           <div>
@@ -52,6 +56,7 @@ function PersonCard({
           {nationalId && (
             <div>
               <span className="text-[var(--color-text-muted)]">{t('الرقم القومي', 'National ID')}:</span>{' '}
+              {/* On screen: masked. On print: full value via CSS print utility */}
               <span className="screen-only font-mono text-[var(--color-text)]">{maskNationalId(nationalId)}</span>
               <span className="print-only font-mono text-[var(--color-text)]">{nationalId}</span>
             </div>
@@ -88,9 +93,7 @@ function AgentCard({ data, lang }: { data: Parties['agent']; lang: 'ar' | 'en' }
         <h3 className="text-sm font-bold text-[var(--color-accent-dark)] uppercase tracking-wider mb-3">
           {t('الوسيط', 'Agent')}
         </h3>
-        <p className="text-sm text-[var(--color-text-muted)] italic">
-          {t('لا يوجد وسيط', 'No agent assigned')}
-        </p>
+        <p className="text-sm text-[var(--color-text-muted)] italic">{t('لا يوجد وسيط', 'No agent assigned')}</p>
       </div>
     );
   }
@@ -128,22 +131,33 @@ function AgentCard({ data, lang }: { data: Parties['agent']; lang: 'ar' | 'en' }
   );
 }
 
-function AdminCard({ data, lang }: { data: Parties['platform_admin']; lang: 'ar' | 'en' }) {
+/**
+ * Platform admin card — only rendered when the backend includes platform_admin
+ * in the response (i.e., only for admin viewers; it is stripped for buyers/sellers).
+ */
+function AdminCard({ data, lang }: { data: Parties['platform_admin'] | null; lang: 'ar' | 'en' }) {
   const t = (ar: string, en: string) => (lang === 'ar' ? ar : en);
   if (!data) return null;
+
   return (
     <div className="glass rounded-xl p-5">
       <h3 className="text-sm font-bold text-[var(--color-accent-dark)] uppercase tracking-wider mb-3">
         {t('مدير المنصة', 'Platform Admin')}
       </h3>
       <div className="space-y-2 text-sm">
-        <div>
-          <span className="text-[var(--color-text-muted)]">{t('معرف المدير', 'Admin ID')}:</span>{' '}
-          <span className="text-[var(--color-text)]">{data.assigned_admin_id ?? '—'}</span>
-        </div>
+        {data.assigned_admin_id && (
+          <div>
+            <span className="text-[var(--color-text-muted)]">{t('معرف المدير', 'Admin ID')}:</span>{' '}
+            <span className="text-[var(--color-text)]">{data.assigned_admin_id}</span>
+          </div>
+        )}
         <div>
           <span className="text-[var(--color-text-muted)]">{t('حالة المراجعة', 'Review Status')}:</span>{' '}
-          <span className={`font-semibold ${data.review_status === 'AWAITING_REVIEW' ? 'text-amber-600' : 'text-emerald-600'}`}>
+          <span
+            className={`font-semibold ${
+              data.review_status === 'AWAITING_REVIEW' ? 'text-amber-600' : 'text-emerald-600'
+            }`}
+          >
             {data.review_status}
           </span>
         </div>
@@ -176,7 +190,6 @@ function Skeleton() {
 
 export function PartiesSection({ data, lang, isLoading }: Props) {
   const t = (ar: string, en: string) => (lang === 'ar' ? ar : en);
-
   if (isLoading) return <Skeleton />;
 
   return (
@@ -189,23 +202,24 @@ export function PartiesSection({ data, lang, isLoading }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <PersonCard
             title={t('المشتري', 'Buyer')}
-            name={data.buyer.full_name || (data.buyer as any).name}
-            nationalId={data.buyer.national_id}
-            email={data.buyer.contact_email || (data.buyer as any).email}
-            phone={data.buyer.contact_phone || (data.buyer as any).phone}
-            address={data.buyer.address}
+            name={data.buyer?.full_name ?? null}
+            nationalId={data.buyer?.national_id ?? null}
+            email={data.buyer?.contact_email ?? null}
+            phone={data.buyer?.contact_phone ?? null}
+            address={data.buyer?.address ?? null}
             lang={lang}
           />
           <PersonCard
             title={t('البائع', 'Seller')}
-            name={data.seller.full_name || (data.seller as any).name}
-            nationalId={data.seller.national_id}
-            email={data.seller.contact_email || (data.seller as any).email}
-            phone={data.seller.contact_phone || (data.seller as any).phone}
-            address={data.seller.address}
+            name={data.seller?.full_name ?? null}
+            nationalId={data.seller?.national_id ?? null}
+            email={data.seller?.contact_email ?? null}
+            phone={data.seller?.contact_phone ?? null}
+            address={data.seller?.address ?? null}
             lang={lang}
           />
           <AgentCard data={data.agent} lang={lang} />
+          {/* platform_admin is null for non-admin viewers — AdminCard handles null gracefully */}
           <AdminCard data={data.platform_admin} lang={lang} />
         </div>
       </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { ordersApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -14,12 +14,25 @@ import { FinancialBreakdown } from '@/components/invoice/FinancialBreakdown';
 import { TermsConditions } from '@/components/invoice/TermsConditions';
 import { PartiesSection } from '@/components/invoice/PartiesSection';
 
+function AuthLoadingScreen() {
+  return (
+    <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
+      <div className="w-10 h-10 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
 export default function CheckoutPage() {
   const params = useParams();
   const router = useRouter();
   const propertyId = String(params.id);
-  const { lang, isLoggedIn } = useAuth();
+  const { lang, isLoggedIn, isLoading: authLoading } = useAuth();
   const toast = useToast();
+
+  useEffect(() => {
+    if (authLoading || isLoggedIn) return;
+    router.replace(`/login?returnUrl=${encodeURIComponent(`/checkout/${propertyId}`)}`);
+  }, [authLoading, isLoggedIn, propertyId, router]);
 
   const [nationalId, setNationalId] = useState('');
   const [address, setAddress] = useState('');
@@ -27,7 +40,7 @@ export default function CheckoutPage() {
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [createdInvoiceId, setCreatedInvoiceId] = useState<number | null>(null);
+  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
 
   const t = (ar: string, en: string) => (lang === 'ar' ? ar : en);
 
@@ -38,12 +51,8 @@ export default function CheckoutPage() {
 
   const invoice = data?.data as DetailedInvoice | undefined;
 
-  // Render Authentication State
-  if (!isLoggedIn) {
-    if (typeof window !== 'undefined') {
-      router.push(`/login?returnUrl=/checkout/${propertyId}`);
-    }
-    return null;
+  if (authLoading || !isLoggedIn) {
+    return <AuthLoadingScreen />;
   }
 
   // Handle errors
@@ -96,9 +105,8 @@ export default function CheckoutPage() {
         t('جاري نقلك لصفحة الفاتورة...', 'Redirecting to your invoice...')
       );
 
-      // Show the beautiful success screen instead of forcefully redirecting
-      const invoiceId = result.data.invoice_id || result.data.id;
-      setCreatedInvoiceId(invoiceId);
+      // Invoice detail page uses order ID in the URL
+      setCreatedOrderId(result.data.id);
       setIsSuccess(true);
     } catch (err) {
       let errorMessage = (err as Error).message;
@@ -119,7 +127,7 @@ export default function CheckoutPage() {
     }
   };
 
-  if (isSuccess && createdInvoiceId) {
+  if (isSuccess && createdOrderId) {
     return (
       <div className="min-h-screen bg-[var(--color-bg)] py-12 px-4 sm:px-6 flex items-center justify-center">
         <div className="max-w-2xl w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-8 md:p-12 text-center shadow-2xl animate-fade-in-up">
@@ -129,6 +137,9 @@ export default function CheckoutPage() {
           <h1 className="text-3xl md:text-4xl font-bold text-emerald-600 mb-4">
             {t('تم إرسال طلب الشراء بنجاح!', 'Purchase Request Submitted!')}
           </h1>
+          <p className="text-sm text-[var(--color-text-muted)] font-mono mb-2">
+            {t('رقم الطلب', 'Order Reference')}: #{createdOrderId}
+          </p>
           <p className="text-lg text-[var(--color-text-secondary)] mb-8 max-w-lg mx-auto leading-relaxed">
             {t(
               'لقد قمنا بإنشاء فاتورة مبدئية لطلبك وتم إرسالها إلى البائع للمراجعة والموافقة.',
@@ -158,7 +169,7 @@ export default function CheckoutPage() {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
-              onClick={() => router.push(`/invoices/${createdInvoiceId}`)}
+              onClick={() => router.push(`/invoices/${createdOrderId}`)}
               className="px-8 py-4 bg-[var(--color-primary)] text-white font-bold rounded-xl hover:opacity-90 transition-opacity flex-1"
             >
               {t('عرض الفاتورة للمتابعة', 'View Invoice Status')}
@@ -170,6 +181,20 @@ export default function CheckoutPage() {
               {t('العودة للعقارات', 'Back to Properties')}
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !invoice) {
+    return (
+      <div className="min-h-screen bg-[var(--color-bg)] py-12 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto space-y-6 animate-pulse">
+          <div className="h-10 w-64 mx-auto bg-[var(--color-border)] rounded-lg" />
+          <div className="h-6 w-96 mx-auto bg-[var(--color-border)] rounded-lg" />
+          <div className="h-64 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl" />
+          <div className="h-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl" />
+          <div className="h-80 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl" />
         </div>
       </div>
     );
@@ -191,8 +216,13 @@ export default function CheckoutPage() {
 
         {/* Invoice Components Preview */}
         <div className="print-area space-y-6">
-          <PropertySection data={invoice?.property_details!} lang={lang} isLoading={isLoading} />
-          <FinancialBreakdown data={invoice?.financial_breakdown!} currency={invoice?.invoice_metadata?.currency || 'EGP'} lang={lang} isLoading={isLoading} />
+          <PropertySection data={invoice.property_details} lang={lang} isLoading={false} />
+          <FinancialBreakdown
+            data={invoice.financial_breakdown}
+            currency={invoice.invoice_metadata?.currency || 'EGP'}
+            lang={lang}
+            isLoading={false}
+          />
         </div>
 
         {/* Buyer Data Form */}

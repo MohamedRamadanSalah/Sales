@@ -191,11 +191,22 @@ export interface DetailedInvoice {
   property_details: InvoicePropertyDetails;
   financial_breakdown: FinancialBreakdown;
   payment_plan: PaymentPlan;
-  legal_compliance_flags: LegalComplianceFlags;
+  legal_compliance_flags: LegalComplianceFlags | null;
   approval_workflow: ApprovalWorkflow;
   attached_documents_checklist: DocumentChecklistItem[];
   terms_and_conditions: TermsAndConditions;
-  audit_trail: AuditTrail;
-  missing_info: string[];
+  audit_trail: AuditTrail | null;
+  missing_info?: string[];
   _schema_notes?: SchemaNote;
+  /** Set by the backend — reflects the calling user's role relative to this invoice */
+  _viewer_role?: 'admin' | 'buyer' | 'seller';
+}
+
+/** Metadata returned alongside the detailed invoice from the /detail endpoint */
+export interface InvoiceMeta {
+  invoice_id: number;
+  approval_status: string;
+  payment_status: string;
+  total_with_fees: number | null;
+  version: number;
 }

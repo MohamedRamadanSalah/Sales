@@ -1,18 +1,66 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import useSWR from 'swr';
 import { ProtectedRoute } from '@/components/common/ProtectedRoute';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { OrderProgressBar } from '@/components/order/OrderProgressBar';
 import { ordersApi } from '@/lib/api';
 import { formatPrice, formatDate, getPropertyTitle } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { Order } from '@/types';
 
+function CancelOrderButton({
+  orderId,
+  lang,
+  onSuccess,
+}: {
+  orderId: number;
+  lang: 'ar' | 'en';
+  onSuccess: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const t = (ar: string, en: string) => (lang === 'ar' ? ar : en);
+
+  const handleCancel = async () => {
+    setLoading(true);
+    try {
+      await ordersApi.cancel(orderId);
+      onSuccess();
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setLoading(false);
+      setConfirming(false);
+    }
+  };
+
+  if (confirming) {
+    return (
+      <div className="flex gap-1">
+        <Button variant="danger" size="sm" onClick={handleCancel} isLoading={loading}>
+          {t('تأكيد', 'Confirm')}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>
+          {t('لا', 'No')}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Button variant="ghost" size="sm" onClick={() => setConfirming(true)} className="text-red-500">
+      {t('إلغاء', 'Cancel')}
+    </Button>
+  );
+}
+
 function OrdersContent() {
   const { lang } = useAuth();
-  const { data, error } = useSWR('orders-my', () => ordersApi.my());
+  const { data, error, mutate } = useSWR('orders-my', () => ordersApi.my());
 
   const orders = data?.data ?? [];
 
@@ -122,6 +170,15 @@ function OrdersContent() {
                 </td>
                 <td className="py-3 px-2">
                   <Badge variant={statusVariant(o.status)}>{o.status}</Badge>
+                  {(o as Order & { approval_status?: string }).approval_status && (
+                    <div className="mt-1">
+                      <OrderProgressBar
+                        approvalStatus={(o as Order & { approval_status?: string }).approval_status!}
+                        paymentStatus={(o as Order & { invoice_status?: string }).invoice_status}
+                        lang={lang}
+                      />
+                    </div>
+                  )}
                 </td>
                 <td className="py-3 px-2 text-[var(--color-text-secondary)]">
                   {formatDate(o.created_at, lang)}
@@ -137,6 +194,9 @@ function OrdersContent() {
                       {lang === 'ar' ? 'الفاتورة' : 'Invoice'}
                     </Button>
                   </Link>
+                  {!o.is_seller && o.status === 'pending' && (
+                    <CancelOrderButton orderId={o.id} lang={lang} onSuccess={() => mutate()} />
+                  )}
                 </td>
               </tr>
             ))}

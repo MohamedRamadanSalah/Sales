@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { useAuth } from '@/context/AuthContext';
 import { invoiceDetailApi } from '@/lib/api';
 import { formatInvoiceDate } from '@/lib/formatters';
 import type { ApprovalWorkflow as ApprovalWorkflowType } from '@/types/invoice';
@@ -14,16 +13,22 @@ interface Props {
   lang: 'ar' | 'en';
   isLoading?: boolean;
   onUpdate: () => void;
+  /**
+   * The viewer's role relative to this invoice — provided by the backend via
+   * the `_viewer_role` field on DetailedInvoice. Determines which action
+   * buttons are shown. Never derived from the generic user role.
+   */
+  viewerRole?: 'admin' | 'buyer' | 'seller';
 }
 
 type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'BLOCKED_PENDING_REVIEW';
 
 function StatusBadge({ status, lang }: { status: ApprovalStatus; lang: 'ar' | 'en' }) {
   const config: Record<ApprovalStatus, { variant: 'pending' | 'approved' | 'rejected' | 'default'; ar: string; en: string }> = {
-    PENDING: { variant: 'pending', ar: 'بانتظار الموافقة', en: 'Pending' },
-    APPROVED: { variant: 'approved', ar: 'تمت الموافقة', en: 'Approved' },
-    REJECTED: { variant: 'rejected', ar: 'مرفوض', en: 'Rejected' },
-    BLOCKED_PENDING_REVIEW: { variant: 'rejected', ar: 'محجوب للمراجعة', en: 'Blocked — Pending Review' },
+    PENDING:                { variant: 'pending',  ar: 'بانتظار الموافقة',    en: 'Pending' },
+    APPROVED:               { variant: 'approved', ar: 'تمت الموافقة',        en: 'Approved' },
+    REJECTED:               { variant: 'rejected', ar: 'مرفوض',               en: 'Rejected' },
+    BLOCKED_PENDING_REVIEW: { variant: 'rejected', ar: 'محجوب للمراجعة',     en: 'Blocked — Pending Review' },
   };
   const c = config[status] ?? config.PENDING;
   return <Badge variant={c.variant}>{lang === 'ar' ? c.ar : c.en}</Badge>;
@@ -41,8 +46,7 @@ function StepIndicator({
   isLast: boolean;
 }) {
   const isApproved = status === 'APPROVED';
-  const isRejected = status === 'REJECTED';
-  const isBlocked = status === 'BLOCKED_PENDING_REVIEW';
+  const isRejected = status === 'REJECTED' || status === 'BLOCKED_PENDING_REVIEW';
 
   return (
     <div className="flex items-start gap-3">
@@ -51,7 +55,7 @@ function StepIndicator({
           className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
             isApproved
               ? 'bg-emerald-500 text-white'
-              : isRejected || isBlocked
+              : isRejected
               ? 'bg-red-500 text-white'
               : 'bg-[var(--color-bg-2)] text-[var(--color-text-muted)] border-2 border-[var(--color-border)]'
           }`}
@@ -71,6 +75,8 @@ function StepIndicator({
   );
 }
 
+// ─── Seller Actions ───────────────────────────────────────────────────────────
+// Only rendered when viewerRole === 'seller' AND seller_approval.status === 'PENDING'
 function SellerActions({
   data,
   invoiceId,
@@ -105,7 +111,7 @@ function SellerActions({
 
   const handleReject = async () => {
     if (reason.trim().length < 20) {
-      setError(t('سبب الرفض يجب أن يكون 20 حرف على الأقل', 'Rejection reason must be at least 20 characters'));
+      setError(t('سبب الرفض يجب أن يكون 20 حرفًا على الأقل', 'Rejection reason must be at least 20 characters'));
       return;
     }
     setIsSubmitting(true);
@@ -123,20 +129,26 @@ function SellerActions({
   return (
     <div className="invoice-approval-actions mt-4 space-y-3">
       <div className="flex flex-wrap gap-3">
-        <Button variant="primary" size="sm" onClick={handleApprove} isLoading={isSubmitting && !showReject}
-          className="!bg-emerald-600 hover:!bg-emerald-700">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handleApprove}
+          isLoading={isSubmitting && !showReject}
+          className="!bg-emerald-600 hover:!bg-emerald-700"
+        >
           {t('الموافقة', 'Approve')}
         </Button>
         <Button variant="danger" size="sm" onClick={() => setShowReject(!showReject)} disabled={isSubmitting}>
           {t('رفض', 'Reject')}
         </Button>
       </div>
+
       {showReject && (
         <div className="invoice-approval-textarea space-y-2">
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder={t('سبب الرفض (20 حرف على الأقل)...', 'Rejection reason (min 20 chars)...')}
+            placeholder={t('سبب الرفض (20 حرفًا على الأقل)...', 'Rejection reason (min 20 chars)...')}
             className="w-full px-4 py-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-300"
             rows={3}
           />
@@ -150,13 +162,14 @@ function SellerActions({
           </div>
         </div>
       )}
-      {error && (
-        <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
-      )}
+
+      {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
     </div>
   );
 }
 
+// ─── Admin Actions ────────────────────────────────────────────────────────────
+// Only rendered when viewerRole === 'admin' AND admin approval is in an actionable state
 function AdminActions({
   data,
   invoiceId,
@@ -215,10 +228,7 @@ function AdminActions({
     setIsSubmitting(true);
     setError('');
     try {
-      await invoiceDetailApi.adminApproval(invoiceId, {
-        status: 'BLOCKED_PENDING_REVIEW',
-        notes: text.trim(),
-      });
+      await invoiceDetailApi.adminApproval(invoiceId, { status: 'BLOCKED_PENDING_REVIEW', notes: text.trim() });
       onUpdate();
     } catch (err) {
       setError((err as Error).message);
@@ -230,14 +240,29 @@ function AdminActions({
   return (
     <div className="invoice-approval-actions mt-4 space-y-3">
       <div className="flex flex-wrap gap-3">
-        <Button variant="primary" size="sm" onClick={handleApprove} isLoading={isSubmitting && action === 'none'}
-          className="!bg-emerald-600 hover:!bg-emerald-700">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handleApprove}
+          isLoading={isSubmitting && action === 'none'}
+          className="!bg-emerald-600 hover:!bg-emerald-700"
+        >
           {t('الموافقة', 'Approve')}
         </Button>
-        <Button variant="danger" size="sm" onClick={() => { setAction('reject'); setText(''); }} disabled={isSubmitting}>
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={() => { setAction('reject'); setText(''); }}
+          disabled={isSubmitting}
+        >
           {t('رفض', 'Reject')}
         </Button>
-        <Button variant="secondary" size="sm" onClick={() => { setAction('changes'); setText(''); }} disabled={isSubmitting}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => { setAction('changes'); setText(''); }}
+          disabled={isSubmitting}
+        >
           {t('طلب تعديلات', 'Request Changes')}
         </Button>
       </div>
@@ -273,9 +298,8 @@ function AdminActions({
           </div>
         </div>
       )}
-      {error && (
-        <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
-      )}
+
+      {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
     </div>
   );
 }
@@ -301,15 +325,16 @@ function Skeleton() {
   );
 }
 
-export function ApprovalWorkflow({ data, invoiceId, lang, isLoading, onUpdate }: Props) {
+export function ApprovalWorkflow({ data, invoiceId, lang, isLoading, onUpdate, viewerRole }: Props) {
   const t = (ar: string, en: string) => (lang === 'ar' ? ar : en);
-  const { user } = useAuth();
-  const userRole = user?.role;
 
   if (isLoading) return <Skeleton />;
 
-  const isSeller = userRole === 'broker' || userRole === 'client';
-  const isAdmin = userRole === 'admin';
+  // ── Role check is driven by the backend-supplied _viewer_role, not guessed from
+  // the global user role. This ensures only the actual seller of this property
+  // sees seller action buttons, and only admins see admin action buttons.
+  const isSeller = viewerRole === 'seller';
+  const isAdmin  = viewerRole === 'admin';
 
   return (
     <div className="invoice-section animate-fade-in-up delay-600">
@@ -325,7 +350,7 @@ export function ApprovalWorkflow({ data, invoiceId, lang, isLoading, onUpdate }:
             <p className="text-sm font-semibold text-red-700 mb-1">
               🚫 {t('الفاتورة محجوبة للمراجعة', 'Invoice Blocked — Pending Review')}
             </p>
-            {data.admin_approval.notes && (
+            {isAdmin && data.admin_approval.notes && (
               <p className="text-sm text-red-600">{data.admin_approval.notes}</p>
             )}
           </div>
@@ -341,8 +366,17 @@ export function ApprovalWorkflow({ data, invoiceId, lang, isLoading, onUpdate }:
           </div>
         )}
 
+        {/* Fully approved banner */}
+        {data.final_status === 'APPROVED' && (
+          <div className="mb-5 bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+            <p className="text-sm font-semibold text-emerald-700">
+              ✅ {t('تمت الموافقة على الفاتورة بالكامل', 'Invoice fully approved')}
+            </p>
+          </div>
+        )}
+
         {/* Step indicators */}
-        <div className="mb-6">
+        <div className="mb-6 space-y-1">
           <StepIndicator
             stepNumber={1}
             label={t('موافقة البائع', 'Seller Approval')}
@@ -365,7 +399,7 @@ export function ApprovalWorkflow({ data, invoiceId, lang, isLoading, onUpdate }:
 
         {/* Step details */}
         <div className="space-y-4">
-          {/* Seller approval */}
+          {/* Seller approval block */}
           <div className="bg-[var(--color-bg-2)] rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-semibold text-[var(--color-text)]">
@@ -378,13 +412,13 @@ export function ApprovalWorkflow({ data, invoiceId, lang, isLoading, onUpdate }:
                 {formatInvoiceDate(data.seller_approval.approved_at, lang)}
               </p>
             )}
-            {/* Seller action buttons */}
+            {/* Only the actual seller of this invoice sees these action buttons */}
             {isSeller && (
               <SellerActions data={data} invoiceId={invoiceId} lang={lang} onUpdate={onUpdate} />
             )}
           </div>
 
-          {/* Admin approval */}
+          {/* Admin approval block */}
           <div className="bg-[var(--color-bg-2)] rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-semibold text-[var(--color-text)]">
@@ -397,12 +431,13 @@ export function ApprovalWorkflow({ data, invoiceId, lang, isLoading, onUpdate }:
                 {formatInvoiceDate(data.admin_approval.approved_at, lang)}
               </p>
             )}
-            {data.admin_approval.admin_id && (
+            {/* Admin ID is only shown to admins — stripped from buyer/seller responses */}
+            {isAdmin && data.admin_approval.admin_id && (
               <p className="text-xs text-[var(--color-text-muted)]">
                 {t('معرف المدير', 'Admin ID')}: {data.admin_approval.admin_id}
               </p>
             )}
-            {/* Admin action buttons */}
+            {/* Only platform admins see admin action buttons */}
             {isAdmin && (
               <AdminActions data={data} invoiceId={invoiceId} lang={lang} onUpdate={onUpdate} />
             )}

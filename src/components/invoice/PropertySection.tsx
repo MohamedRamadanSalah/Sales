@@ -3,7 +3,7 @@
 import type { InvoicePropertyDetails } from '@/types/invoice';
 
 interface Props {
-  data: InvoicePropertyDetails;
+  data?: InvoicePropertyDetails | null;
   lang: 'ar' | 'en';
   isLoading?: boolean;
 }
@@ -63,7 +63,7 @@ function Skeleton() {
 export function PropertySection({ data, lang, isLoading }: Props) {
   const t = (ar: string, en: string) => (lang === 'ar' ? ar : en);
 
-  if (isLoading) return <Skeleton />;
+  if (isLoading || !data) return <Skeleton />;
 
   const furnishLabels: Record<string, { ar: string; en: string }> = {
     furnished: { ar: 'مفروش', en: 'Furnished' },

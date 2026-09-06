@@ -4,7 +4,7 @@ import { formatInvoicePrice } from '@/lib/formatters';
 import type { FinancialBreakdown as FinancialBreakdownType } from '@/types/invoice';
 
 interface Props {
-  data: FinancialBreakdownType;
+  data?: FinancialBreakdownType | null;
   currency: string;
   lang: 'ar' | 'en';
   isLoading?: boolean;
@@ -84,7 +84,14 @@ function Skeleton() {
 export function FinancialBreakdown({ data, currency, lang, isLoading }: Props) {
   const t = (ar: string, en: string) => (lang === 'ar' ? ar : en);
 
-  if (isLoading) return <Skeleton />;
+  if (isLoading || !data) return <Skeleton />;
+
+  const negotiatedDiscount = data.negotiated_discount?.amount ?? 0;
+  const platformCommission = data.platform_commission;
+  const agentCommission = data.agent_commission;
+  const vat = data.vat;
+  const otherFees = data.other_fees ?? [];
+  const depositRequired = data.deposit_required;
 
   return (
     <div className="invoice-section animate-fade-in-up delay-300">
@@ -113,34 +120,36 @@ export function FinancialBreakdown({ data, currency, lang, isLoading }: Props) {
           />
 
           {/* Negotiated discount */}
-          {data.negotiated_discount.amount > 0 && (
+          {negotiatedDiscount > 0 && (
             <LineItem
               label={t('خصم تفاوضي', 'Negotiated Discount')}
-              amount={data.negotiated_discount.amount}
+              amount={negotiatedDiscount}
               currency={currency}
               lang={lang}
               isNegative
-              subLabel={data.negotiated_discount.reason ?? undefined}
+              subLabel={data.negotiated_discount?.reason ?? undefined}
             />
           )}
 
-          {/* Platform commission */}
-          <LineItem
-            label={t('عمولة المنصة', 'Platform Commission')}
-            amount={data.platform_commission.amount}
-            currency={currency}
-            lang={lang}
-            subLabel={data.platform_commission.percentage != null ? `${data.platform_commission.percentage}%` : undefined}
-          />
-
-          {/* Agent commission */}
-          {data.agent_commission.amount != null && (
+          {/* Platform commission — hidden from buyer/seller scoped views */}
+          {platformCommission != null && (
             <LineItem
-              label={t('عمولة الوسيط', 'Agent Commission')}
-              amount={data.agent_commission.amount}
+              label={t('عمولة المنصة', 'Platform Commission')}
+              amount={platformCommission.amount}
               currency={currency}
               lang={lang}
-              subLabel={data.agent_commission.percentage != null ? `${data.agent_commission.percentage}%` : undefined}
+              subLabel={platformCommission.percentage != null ? `${platformCommission.percentage}%` : undefined}
+            />
+          )}
+
+          {/* Agent commission */}
+          {agentCommission?.amount != null && (
+            <LineItem
+              label={t('عمولة الوسيط', 'Agent Commission')}
+              amount={agentCommission.amount}
+              currency={currency}
+              lang={lang}
+              subLabel={agentCommission.percentage != null ? `${agentCommission.percentage}%` : undefined}
             />
           )}
 
@@ -165,16 +174,18 @@ export function FinancialBreakdown({ data, currency, lang, isLoading }: Props) {
           />
 
           {/* VAT */}
-          <LineItem
-            label={t('ضريبة القيمة المضافة', 'VAT')}
-            amount={data.vat.amount}
-            currency={currency}
-            lang={lang}
-            subLabel={data.vat.percentage != null ? `${data.vat.percentage}%` : undefined}
-          />
+          {vat != null && (
+            <LineItem
+              label={t('ضريبة القيمة المضافة', 'VAT')}
+              amount={vat.amount}
+              currency={currency}
+              lang={lang}
+              subLabel={vat.percentage != null ? `${vat.percentage}%` : undefined}
+            />
+          )}
 
           {/* Other fees */}
-          {data.other_fees.map((fee, i) => (
+          {otherFees.map((fee, i) => (
             <LineItem
               key={i}
               label={fee.label}
@@ -195,19 +206,21 @@ export function FinancialBreakdown({ data, currency, lang, isLoading }: Props) {
 
           {/* Deposit */}
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-[var(--color-bg-2)] rounded-xl p-4">
-              <p className="text-xs text-[var(--color-text-muted)] mb-1">
-                {t('العربون المطلوب', 'Deposit Required')}
-              </p>
-              <p className="text-lg font-bold text-[var(--color-primary)]">
-                {formatInvoicePrice(data.deposit_required.amount, lang, currency)}
-              </p>
-              {data.deposit_required.deadline && (
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                  {t('الموعد النهائي', 'Deadline')}: {data.deposit_required.deadline}
+            {depositRequired != null && (
+              <div className="bg-[var(--color-bg-2)] rounded-xl p-4">
+                <p className="text-xs text-[var(--color-text-muted)] mb-1">
+                  {t('العربون المطلوب', 'Deposit Required')}
                 </p>
-              )}
-            </div>
+                <p className="text-lg font-bold text-[var(--color-primary)]">
+                  {formatInvoicePrice(depositRequired.amount, lang, currency)}
+                </p>
+                {depositRequired.deadline && (
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                    {t('الموعد النهائي', 'Deadline')}: {depositRequired.deadline}
+                  </p>
+                )}
+              </div>
+            )}
             <div className="bg-[var(--color-bg-2)] rounded-xl p-4">
               <p className="text-xs text-[var(--color-text-muted)] mb-1">
                 {t('المبلغ المتبقي', 'Remaining Balance')}

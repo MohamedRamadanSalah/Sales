@@ -22,28 +22,25 @@ import { AuditTrail } from '@/components/invoice/AuditTrail';
 
 import '../invoice-print.css';
 
-// ─── GAP 3: Required fields for missing info banner ───
+// ─── Missing Info Banner ──────────────────────────────────────────────────────
+
 interface MissingField {
   key: string;
   label: { ar: string; en: string };
 }
 
 const REQUIRED_FIELDS: MissingField[] = [
-  { key: 'parties.buyer.full_name', label: { ar: 'اسم المشتري', en: 'Buyer Name' } },
-  { key: 'parties.buyer.national_id', label: { ar: 'الرقم القومي للمشتري', en: 'Buyer National ID' } },
-  { key: 'parties.buyer.contact_email', label: { ar: 'بريد المشتري', en: 'Buyer Email' } },
-  { key: 'parties.seller.full_name', label: { ar: 'اسم البائع', en: 'Seller Name' } },
-  { key: 'parties.seller.national_id', label: { ar: 'الرقم القومي للبائع', en: 'Seller National ID' } },
-  { key: 'property_details.property_id', label: { ar: 'معرف العقار', en: 'Property ID' } },
-  { key: 'property_details.title', label: { ar: 'عنوان العقار', en: 'Property Title' } },
-  { key: 'property_details.area_sqm', label: { ar: 'المساحة', en: 'Property Area' } },
-  { key: 'property_details.registration_number', label: { ar: 'رقم التسجيل', en: 'Registration Number' } },
-  { key: 'property_details.deed_number', label: { ar: 'رقم السند', en: 'Deed Number' } },
-  { key: 'property_details.legal_status', label: { ar: 'الحالة القانونية', en: 'Legal Status' } },
-  { key: 'financial_breakdown.base_price', label: { ar: 'السعر الأساسي', en: 'Base Price' } },
-  { key: 'financial_breakdown.total_amount_due', label: { ar: 'إجمالي المبلغ', en: 'Total Amount Due' } },
-  { key: 'approval_workflow.seller_approval', label: { ar: 'موافقة البائع', en: 'Seller Approval' } },
-  { key: 'approval_workflow.admin_approval', label: { ar: 'موافقة المدير', en: 'Admin Approval' } },
+  { key: 'parties.buyer.full_name',              label: { ar: 'اسم المشتري',          en: 'Buyer Name' } },
+  { key: 'parties.buyer.national_id',            label: { ar: 'الرقم القومي للمشتري', en: 'Buyer National ID' } },
+  { key: 'parties.seller.full_name',             label: { ar: 'اسم البائع',           en: 'Seller Name' } },
+  { key: 'property_details.property_id',         label: { ar: 'معرف العقار',          en: 'Property ID' } },
+  { key: 'property_details.title',               label: { ar: 'عنوان العقار',         en: 'Property Title' } },
+  { key: 'property_details.area_sqm',            label: { ar: 'المساحة',              en: 'Property Area' } },
+  { key: 'property_details.legal_status',        label: { ar: 'الحالة القانونية',     en: 'Legal Status' } },
+  { key: 'financial_breakdown.base_price',       label: { ar: 'السعر الأساسي',        en: 'Base Price' } },
+  { key: 'financial_breakdown.total_amount_due', label: { ar: 'إجمالي المبلغ',        en: 'Total Amount Due' } },
+  { key: 'approval_workflow.seller_approval',    label: { ar: 'موافقة البائع',        en: 'Seller Approval' } },
+  { key: 'approval_workflow.admin_approval',     label: { ar: 'موافقة المدير',        en: 'Admin Approval' } },
 ];
 
 function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
@@ -60,7 +57,6 @@ function getMissingRequiredFields(invoice: DetailedInvoice): MissingField[] {
   });
 }
 
-// ─── Missing Info Banner (GAP 3) ───
 function MissingInfoBanner({
   fields,
   lang,
@@ -102,7 +98,8 @@ function MissingInfoBanner({
   );
 }
 
-// ─── Error States (GAP 1) ───
+// ─── Error States ─────────────────────────────────────────────────────────────
+
 function ErrorState({
   status,
   message,
@@ -165,51 +162,125 @@ function ErrorState({
   );
 }
 
-// ─── Main Page Content ───
+// ─── Invoice Status Bar (shows relational meta alongside JSON data) ────────────
+
+function InvoiceStatusBar({
+  approvalStatus,
+  paymentStatus,
+  totalWithFees,
+  lang,
+}: {
+  approvalStatus: string;
+  paymentStatus: string;
+  totalWithFees: number | null;
+  lang: 'ar' | 'en';
+}) {
+  const t = (ar: string, en: string) => (lang === 'ar' ? ar : en);
+
+  const approvalColor: Record<string, string> = {
+    draft: 'bg-gray-100 text-gray-700',
+    pending_seller: 'bg-amber-100 text-amber-800',
+    seller_approved: 'bg-blue-100 text-blue-800',
+    seller_rejected: 'bg-red-100 text-red-800',
+    pending_admin: 'bg-purple-100 text-purple-800',
+    admin_approved: 'bg-emerald-100 text-emerald-800',
+    admin_rejected: 'bg-red-100 text-red-800',
+    blocked_pending_review: 'bg-orange-100 text-orange-800',
+    fully_approved: 'bg-emerald-200 text-emerald-900',
+    voided: 'bg-gray-100 text-gray-500',
+  };
+
+  const paymentColor: Record<string, string> = {
+    unpaid: 'bg-amber-100 text-amber-800',
+    paid: 'bg-emerald-100 text-emerald-800',
+    overdue: 'bg-red-100 text-red-800',
+    cancelled: 'bg-gray-100 text-gray-500',
+  };
+
+  const formattedTotal = totalWithFees != null
+    ? new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 0 }).format(totalWithFees)
+    : null;
+
+  return (
+    <div className="flex flex-wrap gap-3 mb-6 p-4 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-[var(--color-text-muted)]">{t('الموافقة', 'Approval')}:</span>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${approvalColor[approvalStatus] ?? 'bg-gray-100 text-gray-700'}`}>
+          {approvalStatus.replace(/_/g, ' ')}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-[var(--color-text-muted)]">{t('الدفع', 'Payment')}:</span>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${paymentColor[paymentStatus] ?? 'bg-gray-100 text-gray-700'}`}>
+          {paymentStatus}
+        </span>
+      </div>
+      {formattedTotal && (
+        <div className="flex items-center gap-2 ms-auto">
+          <span className="text-xs text-[var(--color-text-muted)]">{t('الإجمالي', 'Total')}:</span>
+          <span className="text-sm font-bold text-[var(--color-text)]">{formattedTotal}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Page Content ────────────────────────────────────────────────────────
+
 function InvoicePageContent() {
   const params = useParams();
   const { lang } = useAuth();
   const invoiceId = params.id as string;
   const [isDismissed, setIsDismissed] = useState(false);
 
-  const { data, error, isLoading, mutate } = useSWR(
+  const { data: response, error, isLoading, mutate } = useSWR(
     invoiceId ? `invoice-detail-${invoiceId}` : null,
     () => invoiceDetailApi.getDetailedInvoice(invoiceId),
     { revalidateOnFocus: false }
   );
 
-  const handleUpdate = useCallback(() => {
-    mutate();
-  }, [mutate]);
+  const handleUpdate = useCallback(() => { mutate(); }, [mutate]);
 
-  // ─── GAP 1: Error states ───
   if (error) {
-    const status = error.status ?? (error.message?.includes('404') ? 404 : error.message?.includes('403') ? 403 : 500);
+    const status = error.status ?? (
+      error.message?.includes('404') ? 404
+        : error.message?.includes('403') ? 403
+        : 500
+    );
     return <ErrorState status={status} message={error.message} lang={lang} onRetry={() => mutate()} />;
   }
 
-  const invoice: DetailedInvoice | undefined = data?.data;
+  const invoice: DetailedInvoice | undefined = response?.data;
+  const meta = response?.meta;
   const showLoading = isLoading || !invoice;
 
-  // Missing fields for banner
-  const missingFields = invoice ? getMissingRequiredFields(invoice) : [];
+  // The viewer role is supplied by the backend — no guessing needed
+  const viewerRole = invoice?._viewer_role;
+  const isAdmin = viewerRole === 'admin';
 
-  // Use a fallback structure for skeleton rendering
+  const missingFields = invoice ? getMissingRequiredFields(invoice) : [];
   const fallback: DetailedInvoice = invoice ?? ({} as DetailedInvoice);
 
   return (
     <div className="invoice-page-container max-w-4xl mx-auto px-4 py-8">
-      {/* GAP 3: Missing info banner */}
+
+      {/* Missing info banner */}
       {!showLoading && !isDismissed && missingFields.length > 0 && (
         <MissingInfoBanner fields={missingFields} lang={lang} onDismiss={() => setIsDismissed(true)} />
       )}
 
+      {/* Invoice status bar — sourced from the relational meta, not the JSON blob */}
+      {!showLoading && meta && (
+        <InvoiceStatusBar
+          approvalStatus={meta.approval_status}
+          paymentStatus={meta.payment_status}
+          totalWithFees={meta.total_with_fees}
+          lang={lang}
+        />
+      )}
+
       {/* Section 1: Header */}
-      <InvoiceHeader
-        data={fallback.invoice_metadata}
-        lang={lang}
-        isLoading={showLoading}
-      />
+      <InvoiceHeader data={fallback.invoice_metadata} lang={lang} isLoading={showLoading} />
 
       {/* Section 2: Parties */}
       <div className="mt-6">
@@ -241,12 +312,14 @@ function InvoicePageContent() {
         />
       </div>
 
-      {/* Section 6: Legal & Compliance */}
-      <div className="mt-6">
-        <LegalCompliance data={fallback.legal_compliance_flags} lang={lang} isLoading={showLoading} />
-      </div>
+      {/* Section 6: Legal & Compliance — admin-only (stripped from buyer/seller by backend) */}
+      {(showLoading || isAdmin) && fallback.legal_compliance_flags && (
+        <div className="mt-6">
+          <LegalCompliance data={fallback.legal_compliance_flags} lang={lang} isLoading={showLoading} />
+        </div>
+      )}
 
-      {/* Section 7: Approval Workflow */}
+      {/* Section 7: Approval Workflow — viewerRole drives which action buttons appear */}
       <div className="mt-6">
         <ApprovalWorkflow
           data={fallback.approval_workflow}
@@ -254,6 +327,7 @@ function InvoicePageContent() {
           lang={lang}
           isLoading={showLoading}
           onUpdate={handleUpdate}
+          viewerRole={viewerRole}
         />
       </div>
 
@@ -271,10 +345,12 @@ function InvoicePageContent() {
         <TermsConditions data={fallback.terms_and_conditions} lang={lang} isLoading={showLoading} />
       </div>
 
-      {/* Section 10: Audit Trail */}
-      <div className="mt-6 mb-12">
-        <AuditTrail data={fallback.audit_trail} lang={lang} isLoading={showLoading} />
-      </div>
+      {/* Section 10: Audit Trail — admin-only (stripped from buyer/seller by backend) */}
+      {(showLoading || isAdmin) && fallback.audit_trail && (
+        <div className="mt-6 mb-12">
+          <AuditTrail data={fallback.audit_trail} lang={lang} isLoading={showLoading} />
+        </div>
+      )}
     </div>
   );
 }
